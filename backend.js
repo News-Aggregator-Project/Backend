@@ -1,0 +1,663 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+const cors = require("cors");
+const{UserModel} = require("./db");
+const {z} = require("zod");
+const bcrypt = require("bcrypt");
+require('dotenv').config();
+const axios = require('axios');
+const cheerio = require('cheerio');
+const { readBuilderProgram } = require("typescript");
+
+const MONGODB_URI = process.env.MONGODB_URI;
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+mongoose.connect(MONGODB_URI);
+
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.post("/signup", async function (req, res){
+    const bodyContent = z.object({
+
+        email : z.string().min(3).max(320).email().refine(async (email) => {
+            const existingemail = await UserModel.findOne({email : email.toLowerCase()});
+            return !existingemail;
+        }, {
+            message : "There is already an account with this email"
+        }),
+        name: z.string().min(3).max(50),
+        password: z.string().min(8).max(20)
+    }).strict();
+
+    const check = await bodyContent.safeParseAsync(req.body);
+
+    if(!check.success){
+        res.status(400).json({
+            message: "incorrect format",
+            error: check.error
+        });
+        return;
+    }
+
+    const {name, email, password} = req.body;
+
+    try{
+        const hashedPassword = await bcrypt.hash(password, 5);
+
+        await UserModel.create({
+            name: name,
+            email: email,
+            password: hashedPassword
+        });
+
+        res.json({
+            message: "user created"
+        })
+    }
+    catch(e){
+        res.json({
+            message: "user exist",
+            error: e
+        });
+    }
+});
+
+app.post("/signin", async function (req, res) {
+    const {email, password} = req.body;
+
+    const user = await UserModel.findOne({email});
+
+    if(!user){
+        res.json({
+            message: "user not found"
+        });
+    }
+
+    const compare = await bcrypt.compare(password, user.password);
+
+    if(compare){
+        const token = jwt.sign({
+            id: user._id.toString()
+        },  JWT_SECRET);
+        res.json({
+            message: "user signed in successfully",
+            token: token
+        });
+    }
+    else{
+        res.status(404).send("user not found");
+    }
+})
+
+
+function auth(req, res, next){
+    const token = req.headers.authorization;
+
+    if(token){
+        const user = jwt.verify(token, JWT_SECRET);
+        if(user){
+            req.userId = user.id;
+            const userId = user.id;
+            console.log(userId);
+            req.ObjectId = userId;
+            next();
+        }
+        else{
+            res.status(404).send("user not found");
+        }
+    }
+    else{
+        res.status(404).send("error");
+    }
+}
+
+
+app.use(auth);
+
+
+
+const scrapeRSS = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const link = $(el).find('link').text();
+  
+        items.push({ title, link, description });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+
+
+
+  
+
+const scrapeRSSTOIimg = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+
+      const $ = cheerio.load(xml, { xmlMode: true });
+
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const $description = cheerio.load(description);
+        const img = $description('img').attr('src');
+        $description('img').remove;
+        const descriptionRefined = $description.text();
+        const link = $(el).find('link').text();
+  
+        items.push({ title, link, descriptionRefined, img });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+  
+  
+  
+  
+  
+  const scrapeRSSTOIa = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const $description = cheerio.load(description);
+        const img = $description('img').attr('src');
+        $description('img').remove;
+        $description('a').remove;
+        const descriptionRefined = $description.text();
+        const link = $(el).find('link').text();
+  
+        items.push({ title, link, descriptionRefined, img });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+
+
+
+
+
+  
+const scrapeRSSTOITopStories = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const link = $(el).find('link').text();
+        const img = $(el).find('enclosure').attr('url')
+  
+        items.push({ title, link, description, img });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+  
+  
+  
+  
+  
+  
+  const scrapeRSSTOIUS = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const link = $(el).find('link').text();
+        const $description = cheerio.load(description);
+        const img = $description('img').attr('src');
+        $description('img').remove;
+        $description('a').remove;
+        const descriptionRefined = $description.text();
+  
+  
+        items.push({ title, link, descriptionRefined, img });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+  
+  
+  
+
+
+
+  
+
+const scrapeRSSBBC = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const link = $(el).find('link').text();
+        const img = $(el).find('[width="240"]').attr('url')
+        items.push({ title, link, description, img });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+  
+  
+  
+  
+  
+  
+  const scrapeRSSNYT = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const description = $(el).find('description').text();
+        const link = $(el).find('link').text();
+        const img = $(el).find('[medium="image"]').attr('url')
+        items.push({ title, link, description, img });
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+  
+  
+
+
+
+
+
+
+
+  
+
+
+
+app.get("/topstories", async function(req, res){
+    const items1 = await scrapeRSSTOITopStories('https://timesofindia.indiatimes.com/rssfeedstopstories.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/rss.xml');
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+
+app.get("/trending", async function(req, res){
+    const items1 = await scrapeRSSNYT('https://www.hindustantimes.com/feeds/rss/trending/rssfeed.xml')
+
+    res.json({
+        items1
+    });
+})
+
+
+
+app.get("/latest", async function(req, res){
+    const items1 = await scrapeRSS('https://timesofindia.indiatimes.com/rssfeedmostrecent.cms');//no images
+    const items2 = await scrapeRSSNYT('https://www.hindustantimes.com/feeds/rss/latest/rssfeed.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+app.get("/india", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms');
+
+    res.json({
+        items1
+    });
+})
+
+
+
+
+app.get("/world", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/296589292.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/rss.xml');
+    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/World.xml')
+
+    res.json({
+        items1,
+        items2,
+        items3
+    });
+})
+
+
+
+
+
+app.get("/business", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/1898055.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/business/rss.xml');
+    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Business.xml')
+
+    res.json({
+        items1,
+        items2,
+        items3
+    });
+})
+
+
+
+
+app.get("/us", async function(req, res){
+    const items1 = await scrapeRSSTOIUS('https://timesofindia.indiatimes.com/rssfeeds_us/72258322.cms');
+    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/US.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+app.get("/uk", async function(req, res){
+    const items1 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/uk/rss.xml');
+
+    res.json({
+        items1
+    });
+})
+
+
+
+app.get("/europe", async function(req, res){
+    const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml');
+
+    res.json({
+        items1
+    });
+})
+
+
+app.get("/cricket", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/54829575.cms');
+
+    res.json({
+        items1
+    });
+})
+
+
+
+app.get("/sports", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/4719148.cms');
+
+    res.json({
+        items1
+    });
+})
+
+
+
+
+
+app.get("/science", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/science_and_environment/rss.xml');
+    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Science.xml');
+
+    res.json({
+        items1,
+        items2,
+        items3
+    });
+})
+
+
+app.get("/environment", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/science_and_environment/rss.xml');
+    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/EnergyEnvironment.xml');
+
+    res.json({
+        items1,
+        items2,
+        items3
+    });
+})
+
+
+
+
+app.get("/tech", async function(req, res){
+    const items1 = await scrapeRSSTOIa('https://timesofindia.indiatimes.com/rssfeeds/66949542.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/technology/rss.xml');
+    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml');
+
+    res.json({
+        items1,
+        items2,
+        items3
+    });
+})
+
+
+
+app.get("/education", async function(req, res){
+    const items1 = await scrapeRSSTOIa('https://timesofindia.indiatimes.com/rssfeeds/913168846.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/education/rss.xml');
+    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Education.xml');
+
+    res.json({
+        items1,
+        items2,
+        items3
+    });
+})
+
+
+
+app.get("/entertainment", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml');
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+app.get("/life_and_style", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/2886704.cms');
+    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/FashionandStyle.xml');
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+
+app.get("/most_viewed", async function(req, res){
+    const items1 = await scrapeRSS('https://timesofindia.indiatimes.com/rssfeedmostread.cms');//no images
+    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/MostViewed.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+
+
+app.get("/astrology", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/65857041.cms');
+
+    res.json({
+        items1
+    });
+})
+
+
+
+app.get("/politics", async function(req, res){
+    const items1 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/politics/rss.xml');
+    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+app.get("/health", async function(req, res){
+    const items1 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/health/rss.xml');
+    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Health.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+
+app.get("/automobiles", async function(req, res){
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/74317216.cms');
+    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Automobiles.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+
+
+
+app.post("/profile", async function (req, res) {
+    
+    const ObjectId = req.ObjectId;
+    // console.log('i am in profile');
+    console.log(ObjectId);
+    const user = await UserModel.findOne({_id: ObjectId});
+    console.log(user);
+    const bodyContent = z.object({
+        name: z.string().min(3).max(50),
+        password: z.string().min(8).max(20)
+    }).strict();
+
+    const check = await bodyContent.safeParse(req.body);
+
+    if(!check.success){
+        res.status(400).json({
+            message: "incorrect format",
+            error: check.error
+        });
+        return;
+    }
+
+    const {name, password} = req.body;
+
+    try{
+        const hashedPassword = await bcrypt.hash(password, 5);
+
+        await UserModel.updateOne(
+            {_id: ObjectId} , {$set:{ name: name, password: hashedPassword}}
+        )
+
+        res.json({
+            message: "user updated"
+        })
+    }
+    catch(e){
+        res.json({
+            message: "user exist",
+            error: e
+        });
+    }
+
+
+    // res.json({
+    //     // message: "i am in profile",
+    //     // ObjectId: ObjectId
+    // })
+
+})
+
+
+app.listen(8000);
