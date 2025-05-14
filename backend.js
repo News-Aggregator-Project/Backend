@@ -8,7 +8,7 @@ const bcrypt = require("bcrypt");
 require('dotenv').config();
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { readBuilderProgram } = require("typescript");
+// const { readBuilderProgram } = require("typescript");
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -492,7 +492,7 @@ app.get("/environment", async function(req, res){
 
 
 
-app.get("/tech", async function(req, res){
+app.get("/technology", async function(req, res){
     const items1 = await scrapeRSSTOIa('https://timesofindia.indiatimes.com/rssfeeds/66949542.cms');
     const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/technology/rss.xml');
     const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml');
@@ -532,7 +532,7 @@ app.get("/entertainment", async function(req, res){
 
 
 
-app.get("/life_and_style", async function(req, res){
+app.get("/lifestyle", async function(req, res){
     const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/2886704.cms');
     const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/FashionandStyle.xml');
 
