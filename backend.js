@@ -157,14 +157,14 @@ const scrapeRSSTOIimg = async (url) => {
       const items = [];
       $('item').each((i, el) => {
         const title = $(el).find('title').text();
-        const description = $(el).find('description').text();
-        const $description = cheerio.load(description);
-        const img = $description('img').attr('src');
-        $description('img').remove;
-        const descriptionRefined = $description.text();
+        const olddescription = $(el).find('description').text();
+        const $olddescription = cheerio.load(olddescription);
+        const img = $olddescription('img').attr('src');
+        $olddescription('img').remove;
+        const description = $olddescription.text();
         const link = $(el).find('link').text();
   
-        items.push({ title, link, descriptionRefined, img });
+        items.push({ title, link, description, img });
       });
   
       console.log(items);
@@ -187,15 +187,15 @@ const scrapeRSSTOIimg = async (url) => {
       const items = [];
       $('item').each((i, el) => {
         const title = $(el).find('title').text();
-        const description = $(el).find('description').text();
-        const $description = cheerio.load(description);
-        const img = $description('img').attr('src');
-        $description('img').remove;
-        $description('a').remove;
-        const descriptionRefined = $description.text();
+        const olddescription = $(el).find('description').text();
+        const $olddescription = cheerio.load(olddescription);
+        const img = $olddescription('img').attr('src');
+        $olddescription('img').remove;
+        $olddescription('a').remove;
+        const description = $olddescription.text();
         const link = $(el).find('link').text();
   
-        items.push({ title, link, descriptionRefined, img });
+        items.push({ title, link, description, img });
       });
   
       console.log(items);
@@ -247,16 +247,16 @@ const scrapeRSSTOITopStories = async (url) => {
       const items = [];
       $('item').each((i, el) => {
         const title = $(el).find('title').text();
-        const description = $(el).find('description').text();
         const link = $(el).find('link').text();
-        const $description = cheerio.load(description);
-        const img = $description('img').attr('src');
-        $description('img').remove;
-        $description('a').remove;
-        const descriptionRefined = $description.text();
+        const olddescription = $(el).find('description').text();
+        const $olddescription = cheerio.load(olddescription);
+        const img = $olddescription('img').attr('src');
+        $olddescription('img').remove;
+        $olddescription('a').remove;
+        const description = $olddescription.text();
   
   
-        items.push({ title, link, descriptionRefined, img });
+        items.push({ title, link, description, img });
       });
   
       console.log(items);
@@ -322,7 +322,7 @@ const scrapeRSSBBC = async (url) => {
     }
   };
   
-  
+
 
 
 
@@ -371,26 +371,29 @@ app.get("/latest", async function(req, res){
 
 app.get("/india", async function(req, res){
     const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms');
+    const items2 = await scrapeRSSNYT('https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml');
 
-    res.json({
-        items1
-    });
-})
-
-
-
-
-app.get("/world", async function(req, res){
-    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/296589292.cms');
-    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/rss.xml');
-    const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/World.xml')
 
     res.json({
         items1,
-        items2,
-        items3
+        items2
     });
 })
+
+
+
+
+// app.get("/world", async function(req, res){
+//     const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/296589292.cms');
+//     const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/rss.xml');
+//     const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/World.xml')
+
+//     res.json({
+//         items1,
+//         items2,
+//         items3
+//     });
+// })
 
 
 
@@ -411,9 +414,21 @@ app.get("/business", async function(req, res){
 
 
 
-app.get("/us", async function(req, res){
-    const items1 = await scrapeRSSTOIUS('https://timesofindia.indiatimes.com/rssfeeds_us/72258322.cms');
-    const items2 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/US.xml')
+
+// app.get("/uk", async function(req, res){
+//     const items1 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/uk/rss.xml');
+
+//     res.json({
+//         items1
+//     });
+// })
+
+
+
+
+app.get("/asia", async function(req, res){
+    const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/AsiaPacific.xml');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/asia/rss.xml')
 
     res.json({
         items1,
@@ -423,11 +438,14 @@ app.get("/us", async function(req, res){
 
 
 
-app.get("/uk", async function(req, res){
-    const items1 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/uk/rss.xml');
+
+app.get("/africa", async function(req, res){
+    const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Africa.xml');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/africa/rss.xml')
 
     res.json({
-        items1
+        items1,
+        items2
     });
 })
 
@@ -435,20 +453,64 @@ app.get("/uk", async function(req, res){
 
 app.get("/europe", async function(req, res){
     const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/europe/rss.xml')
 
     res.json({
-        items1
+        items1,
+        items2
     });
 })
 
 
-app.get("/cricket", async function(req, res){
-    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/54829575.cms');
+app.get("/latinamerica", async function(req, res){
+    const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/Americas.xml');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/latin_america/rss.xml')
 
     res.json({
-        items1
+        items1,
+        items2
     });
 })
+
+
+
+
+app.get("/middleeast", async function(req, res){
+    const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml');
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/middle_east/rss.xml')
+
+    res.json({
+        items1,
+        items2
+    });
+})
+
+
+
+
+app.get("/uscanada", async function(req, res){
+    // const items1 = await scrapeRSSTOIUS('https://timesofindia.indiatimes.com/rssfeeds_us/72258322.cms');
+    const items1 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/US.xml')
+    const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml')
+
+    res.json({
+        // items1,
+        items1,
+        items2
+    });
+})
+
+
+
+
+
+// app.get("/cricket", async function(req, res){
+//     const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/54829575.cms');
+
+//     res.json({
+//         items1
+//     });
+// })
 
 
 
@@ -605,7 +667,24 @@ app.get("/automobiles", async function(req, res){
 })
 
 
-
+app.get("/info", async function(req, res){
+    const ObjectId = req.ObjectId;
+    // console.log('i am in profile');
+    console.log(ObjectId);
+    const user = await UserModel.findOne({_id: ObjectId});
+    console.log(user);
+    if(user){
+        res.json({
+            user,
+        })
+    }
+    else{
+        res.send({
+            error: "some error"
+        })
+    }
+    
+})
 
 
 
