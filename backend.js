@@ -91,7 +91,7 @@ app.post("/signin", async function (req, res) {
         });
     }
     else{
-        res.status(404).send("user not found");
+        res.status(404).send("incorrect password");
     }
 })
 
