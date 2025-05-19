@@ -86,6 +86,7 @@ app.post("/signin", async function (req, res) {
             id: user._id.toString()
         },  JWT_SECRET);
         res.json({
+            user: user,
             message: "user signed in successfully",
             token: token
         });
