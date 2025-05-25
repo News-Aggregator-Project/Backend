@@ -17,10 +17,32 @@ const JWT_SECRET = process.env.JWT_SECRET;
 mongoose.connect(MONGODB_URI);
 
 
+require('dotenv').config();
+// Require the cloudinary library
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+
+// Return "https" URLs by setting secure: true
+cloudinary.config({
+  secure: true
+});
+cloudinary.config();
+
+// Log the configuration
+console.log(cloudinary.config());
+
+
+
+
+
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 app.post("/signup", async function (req, res){
     const bodyContent = z.object({
@@ -67,6 +89,24 @@ app.post("/signup", async function (req, res){
         });
     }
 });
+
+app.post("/topics", async function (req, res){
+    const {email, topics} = req.body;
+
+    try{
+        const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.topics = topics; 
+    await user.save();    
+
+    res.status(200).json({ message: "Topics updated", user });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update topics", error: err });
+  }
+})
 
 app.post("/signin", async function (req, res) {
     const {email, password} = req.body;
@@ -541,7 +581,7 @@ app.get("/science", async function(req, res){
 
 
 app.get("/environment", async function(req, res){
-    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms');
+    const items1 = await scrapeRSSTOIimg('https://timesofindia.indiatimes.com/rssfeeds/2647163.cms');
     const items2 = await scrapeRSSBBC('https://feeds.bbci.co.uk/news/science_and_environment/rss.xml');
     const items3 = await scrapeRSSNYT('https://rss.nytimes.com/services/xml/rss/nyt/EnergyEnvironment.xml');
 
@@ -668,6 +708,64 @@ app.get("/automobiles", async function(req, res){
 })
 
 
+
+
+/////////////////////////
+// Uploads an image file
+/////////////////////////
+const uploadImage = async (imagePath) => {
+
+    // Use the uploaded file's name as the asset's public ID and 
+    // allow overwriting the asset with new versions
+    const options = {
+      use_filename: true,
+      unique_filename: false,
+      overwrite: true,
+    };
+
+    try {
+      // Upload the image
+      const result = await cloudinary.uploader.upload(imagePath, { 
+        use_filename: true});
+      console.log(result);
+      return result.public_id;
+    } catch (error) {
+      console.error("the error is:",error);
+    }
+};
+
+
+app.post("/avatar", async function(req, res){
+    const ObjectId = req.ObjectId;
+    // console.log('i am in profile');
+    console.log(ObjectId);
+    const user = await UserModel.findOne({_id: ObjectId});
+    console.log(user);
+
+    const {avatarUrl} = req.body; 
+
+    try {
+        
+
+        const result = await cloudinary.uploader.upload(avatarUrl, {
+        folder: 'avatars',
+        });
+
+        await UserModel.updateOne(
+            {_id: ObjectId} , {$set:{ avatarUrl: result.secure_url}}
+        )
+
+        res.json({ url: result.secure_url });
+    } catch (err) {
+        console.error('Upload error:', err);
+        res.status(500).json({ error: 'Failed to upload image' });
+    }
+
+   
+
+})
+
+
 app.get("/info", async function(req, res){
     const ObjectId = req.ObjectId;
     // console.log('i am in profile');
@@ -726,7 +824,7 @@ app.post("/profile", async function (req, res) {
     }
     catch(e){
         res.json({
-            message: "user exist",
+            message: "user not updated",
             error: e
         });
     }
@@ -738,6 +836,8 @@ app.post("/profile", async function (req, res) {
     // })
 
 })
+
+
 
 
 app.listen(8000,  () => console.log('Running on port 8000'));

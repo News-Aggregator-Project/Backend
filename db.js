@@ -5,7 +5,9 @@ const ObjectId = Schema.ObjectId;
 const User = new Schema({
     name:String,
     email:String,
-    password:String
+    password:String,
+    avatarUrl:String, 
+    topics:[Object],
 })
 
 const userModel = mongoose.model('users',User);
