@@ -838,6 +838,23 @@ app.post("/profile", async function (req, res) {
 })
 
 
+app.post("/logout", async function (req, res) {
+    const ObjectId = req.ObjectId;
+    // console.log('i am in profile');
+    console.log(ObjectId);
+    const user = await UserModel.findOne({_id: ObjectId});
+
+    if(user){
+        res.json({
+            user,
+        })
+    }else{
+        res.send({
+            message:"some error occured"
+        })
+    }
+})
+
 
 
 app.listen(8000,  () => console.log('Running on port 8000'));
