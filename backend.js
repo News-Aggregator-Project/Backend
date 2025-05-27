@@ -20,6 +20,7 @@ mongoose.connect(MONGODB_URI);
 require('dotenv').config();
 // Require the cloudinary library
 const multer = require('multer');
+const { isFunctionLike } = require("typescript");
 const cloudinary = require('cloudinary').v2;
 
 const storage = multer.memoryStorage();
@@ -248,6 +249,36 @@ const scrapeRSSTOIimg = async (url) => {
 
 
 
+  
+  
+  const scrapeRSSTOIvideo = async (url) => {
+    try {
+      const { data: xml } = await axios.get(url);
+  
+      const $ = cheerio.load(xml, { xmlMode: true });
+  
+      const items = [];
+      $('item').each((i, el) => {
+        const title = $(el).find('title').text();
+        const olddescription = $(el).find('description').text();
+        const $olddescription = cheerio.load(olddescription);
+        const img = $olddescription('img').attr('src');
+        $olddescription('img').remove;
+        $olddescription('a').remove;
+        const description = $olddescription.text();
+        const link = $(el).find('link').text();
+        const video = $(el).find('[expression="full"]').attr('url')
+  
+        items.push({ title, link, description, img , video});
+      });
+  
+      console.log(items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching or parsing RSS:', error.message);
+    }
+  };
+
 
 
   
@@ -366,6 +397,14 @@ const scrapeRSSBBC = async (url) => {
 
 
 
+
+  app.get("/newsvideo", async function (req, res) {
+    const items1 = await scrapeRSSTOIvideo('https://timesofindia.indiatimes.com/rssfeedsvideo/3812907.cms');
+
+    res.json({
+        items1,
+    })
+  })
 
 
 
