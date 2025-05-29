@@ -155,7 +155,7 @@ function auth(req, res, next){
         }
     }
     else{
-        res.status(404).send("error");
+        res.status(404).send("no token found");
     }
 }
 
