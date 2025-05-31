@@ -34,7 +34,6 @@ cloudinary.config({
 cloudinary.config();
 
 // Log the configuration
-console.log(cloudinary.config());
 
 
 
